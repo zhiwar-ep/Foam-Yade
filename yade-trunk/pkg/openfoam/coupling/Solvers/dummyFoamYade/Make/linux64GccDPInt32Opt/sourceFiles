@@ -1,0 +1,4 @@
+SOURCE = \
+dummyFoamYade.C \
+
+# sources
