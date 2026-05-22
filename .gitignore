@@ -41,3 +41,19 @@ trunk.iml
 
 Session??.vim
 *.swp
+
+# OpenFOAM/wmake build artifacts
+*/Make/linux64Gcc*/
+*/lnInclude/
+
+# Compiled objects and logs
+*.o
+*.dep
+*.so
+*.a
+*.log
+
+# Editor/OS files
+*~
+.DS_Store
+EOF
