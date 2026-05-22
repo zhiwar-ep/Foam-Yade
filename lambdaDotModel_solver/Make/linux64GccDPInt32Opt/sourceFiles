@@ -1,5 +1,0 @@
-SOURCE = \
-lambdaDotSolver.C \
-lambdaDotModel.C \
-
-# sources
