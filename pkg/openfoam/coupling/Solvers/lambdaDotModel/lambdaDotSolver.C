@@ -7,7 +7,10 @@
 -------------------------------------------------------------------------------
 */
 
+
+
 // Check development branch, the foundation version reorganized classes after version 6
+
 #if foamVersion < 1000 && foamVersion > 10
     #define newFoundationVersion 1
 #else
@@ -50,6 +53,8 @@
 
 #include "pisoControl.H"
 #include "../../FoamYade/FoamYade.H"
+#include "lambdaDotModel.H"   //DasteXar jadid
+
 
 using namespace Foam;
 
@@ -71,6 +76,8 @@ int main(int argc, char *argv[])
 
     #include "createFields.H"
     #include "initContinuityErrs.H"
+
+
     
     
   
@@ -86,6 +93,7 @@ int main(int argc, char *argv[])
     std::cout << "done set of part properties" << std::endl;
 
 
+    lambdaDotModel lambdaDotUpdater(mesh, lambdaDot, nParticles, yadeCoupling); //DasteXar jadid
 
 	yadeCoupling.locateAllParticles();   // places the location of spheres from time 0
 
@@ -102,123 +110,15 @@ int main(int argc, char *argv[])
        
 
         yadeCoupling.setParticleAction(runTime.deltaT().value());
-        
 
 
-        
-
-//  DasteXar Update lambdaDot with constant rate
-
-	//lambdaDot += (0.1 * runTime.deltaT().value());  // same for all cells
-	
-	forAll(lambdaDot, i)
-		{
-		    const point& c = mesh.C()[i];
-		    lambdaDot[i] = 0.1 * Foam::sin(c.x());   // or something else spatially varying
-		}
+        lambdaDotUpdater.update(); //DasteXar jadid
 
 
-	lambdaDot.correctBoundaryConditions();
+        lambdaDotUpdater.writeParticlesData(); // DasteXar to write ParticlesData.txt in each time step for each rank
 
 
 
-  
-// DasteXar  Count particles per cell 
-	nParticles = 0.0;
-
-	for (const auto& procPtr : yadeCoupling.inCommProcs)
-	{
-	    if (!procPtr) continue;
-
-	    for (const auto& partPtr : procPtr->foundParticles)
-	    {
-		if (!partPtr) continue;
-
-		const point& center = partPtr->pos;
-		label cellI = mesh.findCell(center);
-
-		if (cellI >= 0)
-		    nParticles[cellI] += 1.0;
-	    }
-	}
-	
-	
-//DasteXar
-// Assign lambdaDot of each cell to spheres inside that cell
-for (const auto& procPtr : yadeCoupling.inCommProcs)
-{
-    if (!procPtr) continue;
-
-    for (const auto& partPtr : procPtr->foundParticles)
-    {
-        if (!partPtr) continue;
-
-        const point& center = partPtr->pos;
-        label cellI = mesh.findCell(center);
-
-        // Skip empty cells
-        if (cellI < 0) continue;
-        if (nParticles[cellI] < 0.5) continue;
-
-        // Read   lambdaDot and assign it to the particle
-        scalar lambdaDotVal = lambdaDot[cellI];
-        partPtr->lambdaDot = lambdaDotVal;
-    }
-}
-
-
-
-
-
-//  non-zero lambdaDot particles: (particleID, cellID, lambdaDot)
-// one file per MPI rank to avoid contention; append each timestep
-
-// NOTE: this particleID is different with particleID of yade !!! 
-
-if (runTime.outputTime())
-
-{
-    const int myRank = Pstream::myProcNo();
-
-    // build per-rank path in the current time folder
-    fileName outDir = runTime.timePath();  
-    mkDir(outDir);                         
-
-    fileName outPath = outDir / ("ParticlesData.txt");
-
-    std::ofstream ofs(outPath.c_str(), std::ios::app);
-    ofs.setf(std::ios::scientific);
-    ofs.precision(8);
-
-    ofs << "# time " << runTime.timeName() << "  (particleID  cellID  lambdaDot)\n";
-
-    for (const auto& procPtr : yadeCoupling.inCommProcs)
-    {
-        if (!procPtr) continue;
-
-        for (const auto& partPtr : procPtr->foundParticles)
-        {
-            if (!partPtr) continue;
-
-            const point& center = partPtr->pos;
-            label cellI = mesh.findCell(center);
-
-            if (cellI < 0) continue;
-            if (nParticles[cellI] < 0.5) continue;
-
-            const scalar ld = lambdaDot[cellI];
-
-            ofs << partPtr->indx << "  " << cellI << "  " << ld << "\n";
-        }
-    }
-
-    ofs << "\n"; 
-}
-
-
-
-        
-        
 
 
         // Momentum predictor
