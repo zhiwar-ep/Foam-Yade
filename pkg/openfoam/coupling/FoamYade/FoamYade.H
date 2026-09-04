@@ -44,6 +44,12 @@ public:
 	YadeParticle() {};
 	double                              dia;
 	scalar                              lambdaDot = 0;
+	// Integrated particle length scale [m], received from Yade's
+	// State::lambda_ (Yade integrates it from lambdaDot every DEM step and
+	// sends it back through the particle-data buffer). The 1.0 default matches
+	// Yade's own, so an unset particle reads as an unstretched spring rather
+	// than as zero size.
+	scalar                              lambda    = 1.0;
 	bool                                isFib = false;
 	double                              vol;
 	point                               pos;
@@ -126,7 +132,7 @@ public:
 	volScalarField&                          alpha;
 	volVectorField&                          uSource;
 	volVectorField&                          uParticle;
-	volScalarField&                          lambdaDot;   // DasteXar (for solver)
+	volScalarField&                          lambdaDot;   // rate of change of lambda [m/s], OpenFOAM -> Yade, per-cell before per-particle assignment
 	void                                     updateSources();
 	bool                                     serialYade;
 
@@ -157,7 +163,7 @@ public:
 	        volVectorField&                      _uParticle,
 	        volScalarField&                      _uCoeff,
 	        volVectorField&                      _uInterp,
-	        volScalarField&                      _lambdaDot, // to pass LambdaDot from OF to YADE (DasteXar) (for solver)
+	        volScalarField&                      _lambdaDot, // rate of change of lambda [m/s], passed from OpenFOAM to Yade
 	        bool                                 gaussianInterp)
 	        : mesh(_mesh)
 	        , U(_U)
@@ -172,7 +178,7 @@ public:
 	        , alpha(_alpha)
 	        , uSource(_uSource)
 	        , uParticle(_uParticle)
-	        , lambdaDot(_lambdaDot)     // to pass LambdaDot from OF to YADE (DasteXar) (for solver)
+	        , lambdaDot(_lambdaDot)     // rate of change of lambda [m/s], passed from OpenFOAM to Yade
 	        , mshTree(mesh.C())
 	{
 		isGaussianInterp = gaussianInterp;
